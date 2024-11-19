@@ -126,7 +126,7 @@ function create_merkle_tree(data_blocks):
 #### 11. **Non-Malleability**
 
 - **Definition**: It's infeasible to alter the tree or a proof without detection.
-- **Formal Specification**:$\text{AlteredProof}(P') \implies \text{VerifyProof}(d, P', h_{\text{root}}) = \text{False}$
+- **Formal Specification**: $\text{AlteredProof}(P') \implies \text{VerifyProof}(d, P', h_{\text{root}}) = \text{False}$
 - **Verification Suitability**: Can be formally specified to ensure that any modification invalidates the proof.
 
 #### 12. **Data Confidentiality**
