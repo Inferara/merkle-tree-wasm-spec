@@ -17,7 +17,7 @@ Many blockchains such as Ethereum or Polkadot utilize Merkle Trees (or variation
   - [Second Preimage Resistance](#8-second-preimage-resistance)
   - [Proof of Inclusion](#9-proof-of-inclusion)
   - [Uniqueness of Path](#10-uniqueness-of-path)
-  - [Non-Malleability](#11-non--malleability)
+  - [Non-Malleability](#11-non-malleability)
   - [Data Confidentiality](#12-data-confidentiality)
   - [Stateless Verification](#13-stateless-verification)
   - [Tree Balance Handling](#14-tree-balance-handling)
