@@ -64,18 +64,22 @@
   ;; while `merkleRecon` runs. It doesn't need to be persisted between calls.
   (global (export "merkleScratchpad") i32)
 
-  ;; Helper function offsetting address of hash from the base over a given number of
-  ;; hashes
+  ;; Helper function offsetting address of hash from the base over a given
+  ;; number of hashes.
   (func $addrOf (param $index i32) (param $base i32) (result i32)
     (local.get $index)
       (i32.mul (global.get $hashSize))
       (i32.add (local.get $base))
   )
 
-  ;; We limit the size of the tree with 512 leaves here, but for 256-bit hashes this
-  ;; can be safely rized to 2^25 until we exhaust 32-bit address space. Size
-  ;; of memory bank needs to be expanded accordingly.
+  ;; We limit the size of the tree with 512 leaves here, but for 256-bit
+  ;; hashes this can be safely rized to 2^25 until we exhaust 32-bit address
+  ;; space. Size of memory bank needs to be expanded accordingly.
   (global $maxWidth i32 (i32.const 0x200))
+
+  ;; Again, 16К bytes limit on data blobs for hashing is arbitrary, with
+  ;; expansion of allocated memory the real limit is 32-bit address space.
+  (global $maxDataSize i32 (i32.const 0x4000))
 
   ;; Helper function for `undef`-ining memory ranges
   (func $memoryUndef (param $addr i32) (param $size i32)
@@ -270,7 +274,7 @@
     )
 
     (local.set $tree1 (call $addrOf (i32.const 2) (i32.const 0)))
-    (local.set $tree1 (call $addrOf (local.get $weight) (local.get $tree1)))
+    (local.set $tree2 (call $addrOf (local.get $weight) (local.get $tree1)))
 
     (local.set $size (i32.mul (global.get $hashSize) (local.get $width)))
 
@@ -305,7 +309,90 @@
     )
   )
 
+  ;; Main procedure which totality ensures that evidence built by
+  ;; `merkleChain` can be used to confirm inclusion of data block in the
+  ;; leaves of Merkle tree.
+  (func $soundness
+    (local $width i32)
+    (local $height i32)
+    (local $weight i32)
+    (local $tree i32)
+    (local $idx i32)
+    (local $chain i32)
+    (local $data i32)
+    (local $size i32)
+
+    (local.set $width (undef i32))
+
+    (filter
+      (i32.eqz (local.get $width))
+        (if (then unreachable))
+
+      (i32.gt_u (local.get $width) (global.get $maxWidth))
+        (if (then unreachable))
+    )
+
+    (local.set $height (call $merkleHeight (local.get $width)))
+    (local.set $weight (call $merkleWeight (local.get $width)))
+
+    (local.set $tree (call $addrOf (i32.const 1) (i32.const 0)))
+    (local.set $chain (call $addrOf (local.get $weight) (local.get $tree)))
+    (local.set $data (call $addrOf (local.get $height) (local.get $chain)))
+
+    (call $memoryUndef
+      (local.get $tree)
+      (i32.mul (global.get $hashSize) (local.get $width))
+    )
+
+    (call $merkleTree (local.get $tree) (local.get $width))
+
+    (undef i32)
+      (local.tee $idx)
+      (i32.ge_u (local.get $width))
+      (if (then (filter unreachable)))
+
+    (call $merkleChain
+      (local.get $chain)
+      (local.get $tree)
+      (local.get $width)
+      (local.get $idx)
+    )
+
+    (undef i32)
+      (local.tee $size)
+      (i32.ge_u (global.get $maxDataSize))
+      (if (then (filter unreachable)))
+
+    (call $memoryUndef (local.get $data) (local.get $size))
+
+    (call $digest (i32.const 0) (local.get $data) (local.get $size))
+
+    (filter
+      (call $memoryAlike
+        (call $addrOf (local.get $idx) (local.get $tree))
+        (i32.const 0)
+        (global.get $hashSize)
+      )
+    )
+
+    (call $merkleRecon
+      (i32.const 0)
+      (local.get $idx)
+      (local.get $data)
+      (local.get $size)
+      (local.get $chain)
+      (local.get $height)
+    )
+
+    (call $memoryAlike
+      (call $merkleRoot (local.get $tree) (local.get $width))
+      (i32.const 0)
+      (global.get $hashSize)
+    )
+  )
+
   (func $verify
     (total (call $integrity))
+    (total (call $soundness))
   )
 )
