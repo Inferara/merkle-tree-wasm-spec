@@ -40,7 +40,7 @@ function create_merkle_tree(data_blocks):
 
 Let us define the following:
 
-- Let $H: \{0,1\}^* \rightarrow \{0,1\}^{HashSize}$ be a cryptographic hash function.
+- Let $H: \\{0,1\\}^* \rightarrow \\{0,1\\}^{HashSize}$ be a cryptographic hash function.
 - Let $S = [h_1, h_2, \ldots, h_n]$ be a sequence of hashes (leaves of the Merkle tree).
 - Let $merkleTree(S)$ be a function that constructs a Merkle tree from the sequence $S$ and returns the root hash.
 - Let $merkleChain(i,S)$ be the authentication path (chain of proofs) for the $i$-th leaf $h_i$​ in $S$.
@@ -56,7 +56,7 @@ There exists an $O(n)$ - complex algorithm that takes two hash sequences $S=[h_1
 
 _Mathematically:_
 
-There exists $O(n)$ - complex function $F : \{0,1\}^{HashSize \times n} \times \{0,1\}^{HashSize \times n} \rightarrow \{0,1\}^{HashSize \times 2} \times \{0,1\}^{HashSize \times 2}$ such that
+There exists $O(n)$ - complex function $F : \\{0,1\\}^{HashSize \times n} \times \\{0,1\\}^{HashSize \times n} \rightarrow \\{0,1\\}^{HashSize \times 2} \times \\{0,1\\}^{HashSize \times 2}$ such that
 
 If $S \neq S'$, $merkleTree(S)=merkleTree(S')$ and $F(S, S') = (x, y)$, then $H(x)=H(y)$.
 
@@ -66,11 +66,11 @@ If $S \neq S'$, $merkleTree(S)=merkleTree(S')$ and $F(S, S') = (x, y)$, then $H(
 
 _Statement:_
 
-For any $i \in \{1, 2, \ldots, n\}$, the root hash reconstructed from the $i$-th leaf hash $h_i$​ and its corresponding chain of proofs $merkleChain(i,S)$ equals the root hash of the Merkle tree built from $S$.
+For any $i \in \\{1, 2, \ldots, n\\}$, the root hash reconstructed from the $i$-th leaf hash $h_i$​ and its corresponding chain of proofs $merkleChain(i,S)$ equals the root hash of the Merkle tree built from $S$.
 
 _Mathematically:_
 
-For all $i \in \{1, 2, \ldots, n\}$ and all $S = [h_1, h_2, \ldots, h_n]$
+For all $i \in \\{1, 2, \ldots, n\\}$ and all $S = [h_1, h_2, \ldots, h_n]$
 
 $\text{merkleRecon}(h_i, i, \text{merkleChain}(i, S)) = \text{merkleTree}(S)$.
 
@@ -80,11 +80,11 @@ $\text{merkleRecon}(h_i, i, \text{merkleChain}(i, S)) = \text{merkleTree}(S)$.
 
 _Statement:_
 
-There exists an $O(\log n)$ - complex algorithm that takes index $i \in \{1, 2, \ldots, n\}$, two hashes $h_i \ne h_i'$ and two evidence chains $c, c' \in \{0,1\}^{HashSize \times \lceil\log_2 n\rceil}$, producing collision of the hash function $H$, if $\text{merkleRecon}(h_i, i, c) = \text{merkleRecon}(h_i', i, c')$.
+There exists an $O(\log n)$ - complex algorithm that takes index $i \in \\{1, 2, \ldots, n\\}$, two hashes $h_i \ne h_i'$ and two evidence chains $c, c' \in \\{0,1\\}^{HashSize \times \lceil\log_2 n\rceil}$, producing collision of the hash function $H$, if $\text{merkleRecon}(h_i, i, c) = \text{merkleRecon}(h_i', i, c')$.
 
 _Mathematically:_
 
-There exists $O(\log n)$ - complex function $G : \{1, 2, \ldots, n\} \times \{0,1\}^{HashSize} \times \{0,1\}^{HashSize} \times \{0,1\}^{HashSize \times \lceil\log_2 n\rceil} \times \{0,1\}^{HashSize \times \lceil\log_2 n\rceil} \rightarrow \{0,1\}^{HashSize \times 2} \times \{0,1\}^{HashSize \times 2}$ such that
+There exists $O(\log n)$ - complex function $G : \\{1, 2, \ldots, n\\} \times \\{0,1\\}^{HashSize} \times \\{0,1\\}^{HashSize} \times \\{0,1\\}^{HashSize \times \lceil\log_2 n\rceil} \times \\{0,1\\}^{HashSize \times \lceil\log_2 n\rceil} \rightarrow \\{0,1\\}^{HashSize \times 2} \times \\{0,1\\}^{HashSize \times 2}$ such that
 
 If $\text{merkleRecon}(h, i, c) = \text{merkleRecon}(h', i, c')$ and $G(i, h, h', c, c') = (x, y)$ then $H(x) = H(y)$.
 
@@ -94,7 +94,7 @@ If $\text{merkleRecon}(h, i, c) = \text{merkleRecon}(h', i, c')$ and $G(i, h, h'
 
 - **Property 1** ensures that the uniqueness of the root hash depends on the uniqueness of the leaf hashes and the collision resistance of $H$. If different leaf sequences yield the same root, $H$ must have collided somewhere in the tree.
 - **Property 2** guarantees that any legitimate leaf can be authenticated against the root hash using its proof chain, maintaining the integrity of the tree structure.
-- **Property 3** asserts that if two different leaves can be used to reconstruct the same root hash from same  with any proof chains, it implies a collision in $H$, violating the tree's integrity.
+- **Property 3** asserts that if two different leaves can be used to reconstruct the same root hash from the same with any proof chains, it implies a collision in $H$, violating the tree's integrity.
 
 ## Rust implementation
 
@@ -174,7 +174,7 @@ is clearly false. Collisions inevitably follow from the very principle of hashin
 
 > Given a collision of Merkle trees, a collision of the hash function used in their construction can be computed in polynomial time.
 
-Putting aside the complexity estimation of the solution for now, let's try to at least formulate its existence.
+Putting aside the complexity estimation of the solution, for now, let's try to at least formulate its existence.
 
 ```rust
 // Auxiliary function that returns two arrays of hashes
