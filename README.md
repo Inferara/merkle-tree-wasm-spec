@@ -94,7 +94,7 @@ If $\text{merkleRecon}(h, i, c) = \text{merkleRecon}(h', i, c')$ and $G(i, h, h'
 
 - **Property 1** ensures that the uniqueness of the root hash depends on the uniqueness of the leaf hashes and the collision resistance of $H$. If different leaf sequences yield the same root, $H$ must have collided somewhere in the tree.
 - **Property 2** guarantees that any legitimate leaf can be authenticated against the root hash using its proof chain, maintaining the integrity of the tree structure.
-- **Property 3** asserts that if two different leaves can be used to reconstruct the same root hash from the same with any proof chains, it implies a collision in $H$, violating the tree's integrity.
+- **Property 3** asserts that if two different leaves can be used to reconstruct the same root hash from the same position with any proof chains, it implies a collision in $H$, violating the tree's integrity.
 
 ## Rust implementation
 
