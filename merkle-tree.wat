@@ -81,7 +81,7 @@
 
   ;; Helper function offsetting address of hash from the base over a given number of
   ;; hashes
-  (func $addrOf (param $index i32) (param $base i32) (result i32)
+  (func $addrOf (param $base i32) (param $index i32) (result i32)
     (local.get $index)
       (i32.mul (global.get $hashSize))
       (i32.add (local.get $base))
@@ -113,13 +113,13 @@
         ;; Duplication of last hash in layer
         (memory.copy
           (call $addrOf
-            (local.get $count)
             (local.get $addr)
+            (local.get $count)
           )
 
           (call $addrOf
-            (i32.sub (local.get $count) (i32.const 1))
             (local.get $addr)
+            (i32.sub (local.get $count) (i32.const 1))
           )
 
           (global.get $hashSize)
@@ -132,7 +132,7 @@
       ;; Current layer becomes the previous layer of new iteration
       (local.set $prev (local.get $addr))
       ;; Next layer starts immediately after current
-      (local.set $addr (call $addrOf (local.get $count) (local.get $addr)))
+      (local.set $addr (call $addrOf (local.get $addr) (local.get $count)))
       ;; Next layer is half the size of the current
       (local.set $count (i32.shr_u (local.get $count) (i32.const 1)))
       ;; Reset branch index to zero
@@ -142,13 +142,13 @@
         ;; Hashing sequential pair of hashes in the previous layer into current
         (call $digest
           (call $addrOf
-            (local.get $i)
             (local.get $addr)
+            (local.get $i)
           )
 
           (call $addrOf
-            (i32.shl (local.get $i) (i32.const 1))
             (local.get $prev)
+            (i32.shl (local.get $i) (i32.const 1))
           )
 
           (local.get $hashSize2)
@@ -174,10 +174,10 @@
     (param $count i32)
     (result i32)
 
-    (local.get $count)
-      (call $weight)
-      (i32.sub (i32.const 1))
-      (call $addrOf (local.get $addr))
+    (call $addrOf
+      (local.get $addr)
+      (i32.sub (call $weight (local.get $count)) (i32.const 1))
+    )
   )
 
   ;; Extraction of certifying hash chain for particular leaf. Takes already
@@ -206,8 +206,8 @@
         (local.get $chain)
 
         (call $addrOf
-          (i32.xor (local.get $idx) (i32.const 1))
           (local.get $tree)
+          (i32.xor (local.get $idx) (i32.const 1))
         )
 
         (global.get $hashSize)
@@ -219,9 +219,7 @@
         (local.set $chain)
 
       ;; Slide to the next layer of a tree
-      (local.get $tree)
-        (call $addrOf (local.get $leaves))
-        (local.set $tree)
+      (local.set $tree (call $addrOf (local.get $tree) (local.get $leaves)))
 
       ;; Halve down a number of nodes in layer
       (local.get $leaves)
