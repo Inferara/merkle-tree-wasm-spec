@@ -4,26 +4,6 @@ Many blockchains such as Ethereum or Polkadot utilize Merkle Trees (or variation
 
 ---
 
-## TOC
-- [Pseudocode Implementation](#pseudocode-implementation)
-- [Formal Properties of the Merkle Tree Algorithm](#formal-properties-of-the-merkle-tree-algorithm)
-  - [Determinism](#1-determinism)
-  - [Immutability (Integrity)](#2-immutability-integrity)
-  - [Completeness](#3-completeness)
-  - [Soundness](#4-soundness)
-  - [Efficiency (Computational Complexity)](#5-efficiency-computational-complexity)
-  - [Collision Resistance](#6-collision-resistance)
-  - [Preimage Resistance](#7-preimage-resistance)
-  - [Second Preimage Resistance](#8-second-preimage-resistance)
-  - [Proof of Inclusion](#9-proof-of-inclusion)
-  - [Uniqueness of Path](#10-uniqueness-of-path)
-  - [Non-Malleability](#11-non-malleability)
-  - [Data Confidentiality](#12-data-confidentiality)
-  - [Stateless Verification](#13-stateless-verification)
-  - [Tree Balance Handling](#14-tree-balance-handling)
-  - [Inductive Construction](#15-inductive-construction)
-- [Rust implementation](#rust-implementation)
-
 ### **Pseudocode Implementation**
 
 ```pseudo
@@ -58,104 +38,63 @@ function create_merkle_tree(data_blocks):
 
 ### **Formal Properties of the Merkle Tree Algorithm**
 
-#### 1. **Determinism**
+Let us define the following:
 
-- **Definition**: Given the same set of input data blocks, the Merkle Tree algorithm will always produce the same Merkle Root hash.
-- **Formal Specification**: $\forall D, \text{MerkleTree}(D) = h$
-- **Verification Suitability**: Determinism ensures predictability and consistency, making it possible to formally specify and verify the algorithm's behaviour using mathematical functions.
+- Let $H: \\{0,1\\}^* \rightarrow \\{0,1\\}^{HashSize}$ be a cryptographic hash function.
+- Let $S = [h_1, h_2, \ldots, h_n]$ be a sequence of hashes (leaves of the Merkle tree).
+- Let $merkleTree(S)$ be a function that constructs a Merkle tree from the sequence $S$ and returns the root hash.
+- Let $merkleChain(i,S)$ be the authentication path (chain of proofs) for the $i$-th leaf $h_i$​ in $S$.
+- Let $merkleRecon(h,i,c)$ be a function that reconstructs the root hash from a leaf hash $h$, its position $i$ and a chain of proofs $c$.
 
->[!NOTE]
->This is a non-trivial statement. Formulating the independence of computation from any variables not explicitly passed to the algorithm implies either an explicit enumeration of all possible ways in which the purity of the function can be violated in WASM or the use of non-deterministic references, so we can say, "Whatever computation precedes the algorithm call, if it does not change the input data, it cannot change the output."
+---
 
-#### 2. **Immutability (Integrity)**
+**Property 1: Collision Implication from Identical Root Hashes with Different Leaf Sets**
 
-- **Definition**: Any change in the input data results in a different Merkle Root hash.
-- **Formal Specification**: $\forall D \neq D', \text{MerkleTree}(D) \neq \text{MerkleTree}(D')$
-- **Verification Suitability**: Immutability can be formally verified by demonstrating that any alteration in input propagates through hash computations, changing the root hash.
+_Statement:_
 
-#### 3. **Completeness**
+There exists an $O(n)$ - complex algorithm that takes two hash sequences $S=[h_1,h_2,…,h_n]$ and $S'=[h_1',h_2', \ldots,h_n']$, producing collision of the hash function $H$, if $S\neq S'$ and Merkle trees constructed from these sequences yield the same root hash. 
 
-- **Definition**: All input data blocks are included in the tree; none are omitted.
-- **Formal Specification**: $\forall d_i \in D, \exists \text{leaf node } n_i \text{ such that } n_i.\text{hash} = h(d_i)$
-- **Verification Suitability**: Ensures every data block contributes to the root hash, which can be formally specified and verified.
+_Mathematically:_
 
-#### 4. **Soundness**
+There exists $O(n)$ - complex function $F : \\{0,1\\}^{HashSize \times n} \times \\{0,1\\}^{HashSize \times n} \rightarrow \\{0,1\\}^{HashSize \times 2} \times \\{0,1\\}^{HashSize \times 2}$ such that
 
-- **Definition**: If a proof verifies correctly, the data block is indeed part of the Merkle Tree.
-- **Formal Specification**: $\text{ValidProof}(d, P, h_{\text{root}}) \implies d \in D$
-- **Verification Suitability**: Soundness can be formally specified by showing that only valid proofs correspond to actual data inclusion.
+If $S \neq S'$, $merkleTree(S)=merkleTree(S')$ and $F(S, S') = (x, y)$, then $H(x)=H(y)$.
 
-#### 5. **Efficiency (Computational Complexity)**
+---
 
-- **Definitions**:
-  - **Construction Time**: Building the tree takes linear time relative to the number of data blocks. $T_{\text{construct}}(n) = O(n)$
-  - **Proof Size and Verification Time**: Both are logarithmic relative to the number of data blocks. $\text{ProofSize}(n) = O(\log n), \quad T_{\text{verify}}(n) = O(\log n)$
-- **Verification Suitability**: These properties can be formally analyzed using computational complexity theory.
+**Property 2: Correctness of Proof Verification for a Valid Leaf**
 
-#### 6. **Collision Resistance**
+_Statement:_
 
-- **Definition**: It's computationally infeasible to find two different data sets that produce the same Merkle Root hash.
-- **Formal Specification**:
-  $\text{Computationally infeasible to find } D \neq D' \text{ such that } \text{MerkleTree}(D) = \text{MerkleTree}(D')$
-- **Verification Suitability**: Based on the collision resistance of the underlying hash function, which can be formally specified and reasoned about.
+For any $i \in \\{1, 2, \ldots, n\\}$, the root hash reconstructed from the $i$-th leaf hash $h_i$​ and its corresponding chain of proofs $merkleChain(i,S)$ equals the root hash of the Merkle tree built from $S$.
 
-#### 7. **Preimage Resistance**
+_Mathematically:_
 
-- **Definition**: Given a hash output, it's infeasible to find an input that hashes to that output.
-- **Formal Specification**: $\text{Given } h, \text{ it's infeasible to find } d \text{ such that } h(d) = h$
-- **Verification Suitability**: Ensures that the root hash does not reveal information about the data blocks, suitable for formal cryptographic proofs.
+For all $i \in \\{1, 2, \ldots, n\\}$ and all $S = [h_1, h_2, \ldots, h_n]$
 
-#### 8. **Second Preimage Resistance**
+$\text{merkleRecon}(h_i, i, \text{merkleChain}(i, S)) = \text{merkleTree}(S)$.
 
-- **Definition**: Given an input and its hash, it's infeasible to find a different input that hashes to the same value.
-- **Formal Specification**: $\forall d, \text{ it's infeasible to find } d' \neq d \text{ such that } h(d) = h(d')$
-- **Verification Suitability**: Prevents substitution attacks, essential for formal security verification.
+---
 
-#### 9. **Proof of Inclusion**
+**Property 3: Collision Implication from Two Leaf Proofs Leading to same Root Hash from same position**
 
-- **Definition**: Efficiently proving that a data block is part of the Merkle Tree using a Merkle Proof.
-- **Formal Specification**: $\text{VerifyProof}(d, P, h_{\text{root}}) = \text{True} \iff d \in D$
-- **Verification Suitability**: Formal algorithms can specify and verify the correctness and efficiency of inclusion proofs.
+_Statement:_
 
-#### 10. **Uniqueness of Path**
+There exists an $O(\log n)$ - complex algorithm that takes index $i \in \\{1, 2, \ldots, n\\}$, two hashes $h_i \ne h_i'$ and two evidence chains $c, c' \in \\{0,1\\}^{HashSize \times \lceil\log_2 n\rceil}$, producing collision of the hash function $H$, if $\text{merkleRecon}(h_i, i, c) = \text{merkleRecon}(h_i', i, c')$.
 
-- **Definition**: Each leaf node has a unique path to the root.
-- **Formal Specification**: $\forall n_{\text{leaf}}, \exists! \text{path } P \text{ such that } \text{PathToRoot}(n_{\text{leaf}}) = P$
-- **Verification Suitability**: Ensures that proofs are unambiguous and suitable for formal reasoning about tree structures.
+_Mathematically:_
 
-#### 11. **Non-Malleability**
+There exists $O(\log n)$ - complex function $G : \\{1, 2, \ldots, n\\} \times \\{0,1\\}^{HashSize} \times \\{0,1\\}^{HashSize} \times \\{0,1\\}^{HashSize \times \lceil\log_2 n\rceil} \times \\{0,1\\}^{HashSize \times \lceil\log_2 n\rceil} \rightarrow \\{0,1\\}^{HashSize \times 2} \times \\{0,1\\}^{HashSize \times 2}$ such that
 
-- **Definition**: It's infeasible to alter the tree or a proof without detection.
-- **Formal Specification**: $\text{AlteredProof}(P') \implies \text{VerifyProof}(d, P', h_{\text{root}}) = \text{False}$
-- **Verification Suitability**: Can be formally specified to ensure that any modification invalidates the proof.
+If $\text{merkleRecon}(h, i, c) = \text{merkleRecon}(h', i, c')$ and $G(i, h, h', c, c') = (x, y)$ then $H(x) = H(y)$.
 
-#### 12. **Data Confidentiality**
+---
 
-- **Definition**: The Merkle Root does not reveal information about individual data blocks.
-- **Formal Specification**: $\text{Given } h_{\text{root}}, \text{ cannot deduce } d_i$
-- **Verification Suitability**: Based on hash function properties, suitable for formal security proofs.
+**Explanation:**
 
-#### 13. **Stateless Verification**
-
-- **Definition**: Verification does not require access to the entire tree or data set.
-- **Formal Specification**: $\text{VerifyProof}(d, P, h_{\text{root}}) \text{ uses only } d, P, h_{\text{root}}$
-- **Verification Suitability**: Enables lightweight clients, that can be formally specified for verification.
-
-#### 14. **Tree Balance Handling**
-
-- **Definition**: Defines how the tree handles odd numbers of leaf nodes (e.g., duplicating the last node).
-- **Formal Specification**:
-  - For even $\( n \)$: standard pairing.
-  - For odd $\( n \)$: last node paired with itself or as per protocol.
-- **Verification Suitability**: Ensures consistent tree structures, can be formally specified.
-
-#### 15. **Inductive Construction**
-
-- **Definition**: The tree can be defined recursively or inductively.
-- **Formal Specification**:
-  - **Base Case**: For a single leaf node $\( n \)$, $\( h_{\text{root}} = h(n) \)$.
-  - **Inductive Step**: For trees $\( T_1 \)$ and $\( T_2 \)$, $\( h_{\text{root}} = h(h_{T_1} || h_{T_2}) \)$.
-- **Verification Suitability**: Facilitates formal proofs using mathematical induction.
+- **Property 1** ensures that the uniqueness of the root hash depends on the uniqueness of the leaf hashes and the collision resistance of $H$. If different leaf sequences yield the same root, $H$ must have collided somewhere in the tree.
+- **Property 2** guarantees that any legitimate leaf can be authenticated against the root hash using its proof chain, maintaining the integrity of the tree structure.
+- **Property 3** asserts that if two different leaves can be used to reconstruct the same root hash from the same position with any proof chains, it implies a collision in $H$, violating the tree's integrity.
 
 ## Rust implementation
 
@@ -235,7 +174,7 @@ is clearly false. Collisions inevitably follow from the very principle of hashin
 
 > Given a collision of Merkle trees, a collision of the hash function used in their construction can be computed in polynomial time.
 
-Putting aside the complexity estimation of the solution for now, let's try to at least formulate its existence.
+Putting aside the complexity estimation of the solution, for now, let's try to at least formulate its existence.
 
 ```rust
 // Auxiliary function that returns two arrays of hashes
