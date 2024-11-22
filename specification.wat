@@ -66,19 +66,21 @@
 
   ;; Helper function offsetting address of hash from the base over a given
   ;; number of hashes.
-  (func $addrOf (param $index i32) (param $base i32) (result i32)
+  (func $addrOf (param $base i32) (param $index i32) (result i32)
     (local.get $index)
       (i32.mul (global.get $hashSize))
       (i32.add (local.get $base))
   )
 
-  ;; We limit the size of the tree with 512 leaves here, but for 256-bit
-  ;; hashes this can be safely rized to 2^25 until we exhaust 32-bit address
-  ;; space. Size of memory bank needs to be expanded accordingly.
+  ;; We limit the size of the tree with 512 leaves (height 9) here, but for
+  ;; 256-bit hashes this can be safely rized to 2^25 (height 25) until we
+  ;; exhaust 32-bit address space. Size of memory bank needs to be expanded
+  ;; accordingly.
   (global $maxWidth i32 (i32.const 0x200))
+  (global $maxHeight i32 (i32.const 9))
 
   ;; Again, 16К bytes limit on data blobs for hashing is arbitrary, with
-  ;; expansion of allocated memory the real limit is 32-bit address space.
+  ;; expansion of allocated memory it's safe to raise this to 1G bytes.
   (global $maxDataSize i32 (i32.const 0x4000))
 
   ;; Helper function for `undef`-ining memory ranges
@@ -119,11 +121,11 @@
 
   ;; Deterministic helper function that searches for hash collisions in two
   ;; Merkle trees. Returns two addresses of double-hash size blobs.
-  (func $findCollision
+  (func $findTreeCollision
     (param $tree1 i32)
     (param $tree1 i32)
     (param $width i32)
-    (result i32 i32)
+    (result i32 i32 i32 i32)
 
     (local $hashSize2 i32)
     (local $skip i32)
@@ -151,12 +153,17 @@
           ) (br_if $branches_block i32.eqz)
 
           (call $memoryCollate
-            (call $addrOf (local.get $skip) (local.get $tree1))
-            (call $addrOf (local.get $skip) (local.get $tree2))
+            (call $addrOf (local.get $tree1) (local.get $skip))
+            (call $addrOf (local.get $tree2) (local.get $skip))
             (global.get $hashSize)
           ) (br_if $branches_block)
 
-          (return (local.get $tree1) (local.get $tree2))
+          (return
+            (local.get $tree1)
+            (local.get $hashSize2)
+            (local.get $tree2)
+            (local.get $hashSize2)
+          )
         )
 
         (local.set $tree1 (i32.add (local.get $tree1) (local.get $hashSize2)))
@@ -220,14 +227,23 @@
   ;; Helper procedure that succeeds if two double-hash size blobs are
   ;; different, but have identical hashes. Uses double-hash size chunks of
   ;; memory starting at address 0 for temp storage. 
-  (func $confirmCollision (param $addr1 i32) (param $addr2 i32)
-    (local $hashSize2 i32)
-    (local.set $hashSize2 (i32.shl (global.get $hashSize) (i32.const 1)))
+  (func $confirmCollision
+    (param $addr1 i32)
+    (param $size1 i32)
+    (param $addr2 i32)
+    (param $size2 i32)
 
-    (call $memoryDiffer
-      (local.get $addr1)
-      (local.get $addr2)
-      (local.get $hashSize2)
+    ;; (local $hashSize2 i32)
+    ;; (local.set $hashSize2 (i32.shl (global.get $hashSize) (i32.const 1)))
+
+    (if (i32.eq (local.get $size1) (local.get $size2))
+      (then
+        (call $memoryDiffer
+          (local.get $addr1)
+          (local.get $addr2)
+          (local.get $size2)
+        )
+      )
     )
 
     (call $digest
@@ -273,8 +289,11 @@
         (if (then unreachable))
     )
 
-    (local.set $tree1 (call $addrOf (i32.const 2) (i32.const 0)))
-    (local.set $tree2 (call $addrOf (local.get $weight) (local.get $tree1)))
+    (i32.const 0)
+      (call $addrOf (i32.const 2))
+      (local.tee $tree1)
+      (call $addrOf (local.get $weight))
+      (local.set $tree2)
 
     (local.set $size (i32.mul (global.get $hashSize) (local.get $width)))
 
@@ -301,7 +320,7 @@
     )
 
     (call $confirmCollision
-      (call $findCollision
+      (call $findTreeCollision
         (local.get $tree1)
         (local.get $tree2)
         (local.get $width)
@@ -335,9 +354,13 @@
     (local.set $height (call $merkleHeight (local.get $width)))
     (local.set $weight (call $merkleWeight (local.get $width)))
 
-    (local.set $tree (call $addrOf (i32.const 1) (i32.const 0)))
-    (local.set $chain (call $addrOf (local.get $weight) (local.get $tree)))
-    (local.set $data (call $addrOf (local.get $height) (local.get $chain)))
+    (i32.const 0)
+      (call $addrOf (i32.const 2))
+      (local.tee $tree)
+      (call $addrOf (local.get $weight))
+      (local.tee $chain)
+      (call $addrOf (local.get $height))
+      (local.set $data)
 
     (call $memoryUndef
       (local.get $tree)
@@ -369,7 +392,7 @@
 
     (filter
       (call $memoryAlike
-        (call $addrOf (local.get $idx) (local.get $tree))
+        (call $addrOf (local.get $tree) (local.get $idx))
         (i32.const 0)
         (global.get $hashSize)
       )
@@ -391,8 +414,212 @@
     )
   )
 
+  (func $uniqueness
+    (local $hashSize2 i32)
+    (local $height i32)
+    (local $chainsize i32)
+    (local $temp1l i32)
+    (local $temp1r i32)
+    (local $data1 i32)
+    (local $datasize1 i32)
+    (local $chain1 i32)
+    (local $root1 i32)
+    (local $temp2l i32)
+    (local $temp2r i32)
+    (local $data2 i32)
+    (local $datasize2 i32)
+    (local $chain2 i32)
+    (local $root2 i32)
+    (local $idx i32)
+
+    (local.set $hashSize2 (i32.shl (global.get $hashSize) (i32.const 1)))
+
+    (undef i32)
+      (local.tee $height)
+      (i32.gt_u (global.get $maxHeight))
+      (if (then (filter unreachable)))
+
+    (i32.mul (local.get $height) (global.get $hashSize))
+      (local.set $chainsize)
+
+    (filter
+      (undef i32)
+        (local.tee $datasize1)
+        (i32.gt_u (global.get $maxDataSize))
+        (if (then unreachable))
+
+      (undef i32)
+        (local.tee $datasize2)
+        (i32.gt_u (global.get $maxDataSize))
+        (if (then unreachable))
+    )
+
+    (i32.const 0)
+      (local.tee $temp1l)
+      (i32.add (global.get $hashSize))
+      (local.tee $temp1r)
+      (i32.add (global.get $hashSize))
+      (local.tee $data1)
+      (i32.add (local.get $datasize1))
+      (local.tee $chain1)
+      (call $addrOf (local.get $height))
+      (local.tee $root1)
+      (i32.add (global.get $hashSize))
+      (local.tee $temp1l)
+      (i32.add (global.get $hashSize))
+      (local.tee $temp1r)
+      (i32.add (global.get $hashSize))
+      (local.tee $data2)
+      (i32.add (local.get $datasize2))
+      (local.tee $chain2)
+      (call $addrOf (local.get $height))
+      (local.set $root2)
+
+    (call $memoryUndef (local.get $data1) (local.get $datasize1))
+    (call $memoryUndef (local.get $chain1) (local.get $chainsize))
+    (call $memoryUndef (local.get $data2) (local.get $datasize2))
+    (call $memoryUndef (local.get $chain2) (local.get $chainsize))
+
+    (filter $data_filter
+      (i32.ne (local.get $datasize1) (local.get $datasize2))
+        (br_if $data_filter)
+
+      (call $memoryDiffer
+        (local.get $data1)
+        (local.get $data2)
+        (local.get $datasize1)
+      )
+
+      (undef i32)
+        (local.tee $idx)
+        (i32.ge_u (i32.shl (i32.const 1) (local.get $height)))
+        (if (then unreachable))
+    )
+
+    (call $merkleRecon
+      (local.get $root1)
+      (local.get $idx)
+      (local.get $data1)
+      (local.get $datasize1)
+      (local.get $chain1)
+      (local.get $height)
+    )
+
+    (call $merkleRecon
+      (local.get $root2)
+      (local.get $idx)
+      (local.get $data2)
+      (local.get $datasize2)
+      (local.get $chain2)
+      (local.get $height)
+    )
+
+    (filter
+      (call $memoryAlike
+        (local.get $root1)
+        (local.get $root2)
+        (global.get $hashSize)
+      )
+    )
+
+    (block $height_block
+      (loop $height_loop
+        (br_if $height_block (i32.eqz (local.get $height)))
+
+        (call $digest
+          (local.get $root1)
+          (local.get $data1)
+          (local.get $datasize1)
+        )
+
+        (call $digest
+          (local.get $root2)
+          (local.get $data2)
+          (local.get $datasize2)
+        )
+
+        (call $memoryCollate
+          (local.get $root1)
+          (local.get $root2)
+          (global.get $hashSize)
+        ) (br_if $height_block i32.eqz)
+
+        (if (i32.and (local.get $idx) (i32.const 1))
+          (then
+            (memory.copy
+              (local.get $temp1l)
+              (local.get $chain1)
+              (global.get $hashSize)
+            )
+
+            (memory.copy
+              (local.get $temp1r)
+              (local.get $root1)
+              (global.get $hashSize)
+            )
+
+            (memory.copy
+              (local.get $temp2l)
+              (local.get $chain2)
+              (global.get $hashSize)
+            )
+
+            (memory.copy
+              (local.get $temp2r)
+              (local.get $root2)
+              (global.get $hashSize)
+            )
+          )
+          (else
+            (memory.copy
+              (local.get $temp1l)
+              (local.get $root1)
+              (global.get $hashSize)
+            )
+
+            (memory.copy
+              (local.get $temp1r)
+              (local.get $chain1)
+              (global.get $hashSize)
+            )
+
+            (memory.copy
+              (local.get $temp2l)
+              (local.get $root2)
+              (global.get $hashSize)
+            )
+
+            (memory.copy
+              (local.get $temp2r)
+              (local.get $chain2)
+              (global.get $hashSize)
+            )
+          )
+        )
+
+        (local.set $height (i32.sub (local.get $height) (i32.const 1)))
+        (local.set $data1 (local.get $temp1l))
+        (local.set $datasize1 (local.get $hashSize2))
+        (local.set $chain1 (call $addrOf (i32.const 1) (local.get $chain1)))
+        (local.set $data2 (local.get $temp2l))
+        (local.set $datasize2 (local.get $hashSize2))
+        (local.set $chain2 (call $addrOf (i32.const 1) (local.get $chain2)))
+        (local.set $idx (i32.shr_u (local.get $idx) (i32.const 1)))
+        (br $height_loop)
+      )
+    )
+
+    (call $confirmCollision
+      (local.get $data1)
+      (local.get $datasize1)
+      (local.get $data2)
+      (local.get $datasize2)
+    )
+  )
+
   (func $verify
     (total (call $integrity))
     (total (call $soundness))
+    (total (call $uniqueness))
   )
 )
