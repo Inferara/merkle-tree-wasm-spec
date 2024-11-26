@@ -265,10 +265,16 @@
     )
   )
 
-  ;; Main procedure that captures the essence of collision resistance for Merkle
-  ;; tree construction. By proving its totality we can confirm that obtaining
-  ;; a collision of two Markle trees automatically gives you a hash function
-  ;; collision.
+  ;; Main procedure that captures the essence of collision resistance for
+  ;; Merkle tree construction. By proving its totality we can confirm that
+  ;; obtaining a collision of two Markle trees automatically gives you a hash
+  ;; function collision. Take note, that property is restricted to cover only
+  ;; trees of the same width (number of leaves), without attempting to provide
+  ;; protection against CVE-2012-2459. So indeed, you can extend unbalanced
+  ;; Merkle tree with duplicates of its trailing elements in proper order
+  ;; without changing its root hash. As a defence against this vulnerability
+  ;; you can either avoid unbalanced (non-power-of-two wide) trees, or
+  ;; consider tree width intrinsic part if its identity, along with root hash.
   (func $integrity
     (local $width i32)
     (local $weight i32)
@@ -330,7 +336,9 @@
 
   ;; Main procedure which totality ensures that evidence built by
   ;; `merkleChain` can be used to confirm inclusion of data block in the
-  ;; leaves of Merkle tree.
+  ;; leaves of Merkle tree. Again, protection against CVE-2012-2459 is your
+  ;; own responsibility - for unbalanced trees it is possible to confirm
+  ;; repeated inclusion of trailing leaves at indexes beyound real tree width.
   (func $soundness
     (local $width i32)
     (local $height i32)
@@ -414,6 +422,9 @@
     )
   )
 
+  ;; Main procedure which totality ensures that existence of two different
+  ;; datas, for which exist two evidence chains of same height leading to same
+  ;; root hash from same position index, implies hash function collision.
   (func $uniqueness
     (local $hashSize2 i32)
     (local $height i32)
