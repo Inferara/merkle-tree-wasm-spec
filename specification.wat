@@ -215,7 +215,7 @@
       (uzumaki i32)
         (local.tee $off)
         (i32.ge_u (local.get $size))
-        (if (then (filter unreachable)))
+        (if (then (assume unreachable)))
 
       (i32.ne
         (i32.load8_u (i32.add (local.get $addr1) (local.get $off)))
@@ -380,7 +380,7 @@
     (uzumaki i32)
       (local.tee $idx)
       (i32.ge_u (local.get $width))
-      (if (then (filter unreachable)))
+      (if (then (assume unreachable)))
 
     (call $merkleChain
       (local.get $chain)
@@ -392,7 +392,7 @@
     (uzumaki i32)
       (local.tee $size)
       (i32.ge_u (global.get $maxDataSize))
-      (if (then (filter unreachable)))
+      (if (then (assume unreachable)))
 
     (call $memoryUndef (local.get $data) (local.get $size))
 
@@ -448,7 +448,7 @@
     (uzumaki i32)
       (local.tee $height)
       (i32.gt_u (global.get $maxHeight))
-      (if (then (filter unreachable)))
+      (if (then (assume unreachable)))
 
     (i32.mul (local.get $height) (global.get $hashSize))
       (local.set $chainsize)
