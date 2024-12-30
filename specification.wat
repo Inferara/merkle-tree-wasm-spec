@@ -87,7 +87,7 @@
   (func $memoryUndef (param $addr i32) (param $size i32)
     (loop $main_loop
       (if (i32.eqz (local.get $size)) (then return))
-      (i32.store8 (local.get $addr) (undef i32))
+      (i32.store8 (local.get $addr) (uzumaki i32))
       (local.set $addr (i32.add (local.get $addr) (i32.const 1)))
       (local.set $size (i32.sub (local.get $size) (i32.const 1)))
       (br $main_loop)
@@ -349,7 +349,7 @@
     (local $data i32)
     (local $size i32)
 
-    (local.set $width (undef i32))
+    (local.set $width (uzumaki i32))
 
     (assume
       (i32.eqz (local.get $width))
