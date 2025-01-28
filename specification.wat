@@ -87,7 +87,7 @@
   (func $memoryUndef (param $addr i32) (param $size i32)
     (loop $main_loop
       (if (i32.eqz (local.get $size)) (then return))
-      (i32.store8 (local.get $addr) (undef i32))
+      (i32.store8 (local.get $addr) i32.uzumaki)
       (local.set $addr (i32.add (local.get $addr) (i32.const 1)))
       (local.set $size (i32.sub (local.get $size) (i32.const 1)))
       (br $main_loop)
@@ -188,8 +188,8 @@
     (param $size i32)
     (local $off i32)
 
-    (traverse
-      (undef i32)
+    (exists
+      i32.uzumaki
         (local.tee $off)
         (i32.ge_u (local.get $size))
         (if (then unreachable))
@@ -211,8 +211,8 @@
     (param $size i32)
     (local $off i32)
 
-    (total
-      (undef i32)
+    (forall
+      i32.uzumaki
         (local.tee $off)
         (i32.ge_u (local.get $size))
         (if (then (filter unreachable)))
@@ -282,12 +282,12 @@
     (local $tree2 i32)
     (local $size i32)
 
-    (undef i32)
+    i32.uzumaki
       (local.tee $width)
       (call $merkleWeight)
       (local.set $weight)
 
-    (filter
+    (assume
       (i32.eqz (local.get $width))
         (if (then unreachable))
 
@@ -306,7 +306,7 @@
     (call $memoryUndef (local.get $tree1) (local.get $size))
     (call $memoryUndef (local.get $tree2) (local.get $size))
 
-    (filter
+    (assume
       (call $memoryDiffer
         (local.get $tree1)
         (local.get $tree2)
@@ -317,7 +317,7 @@
     (call $merkleTree (local.get $tree1) (local.get $width))
     (call $merkleTree (local.get $tree2) (local.get $width))
 
-    (filter
+    (assume
       (call $memoryAlike
         (call $merkleRoot (local.get $tree1) (local.get $width))
         (call $merkleRoot (local.get $tree2) (local.get $width))
@@ -349,9 +349,9 @@
     (local $data i32)
     (local $size i32)
 
-    (local.set $width (undef i32))
+    (local.set $width i32.uzumaki)
 
-    (filter
+    (assume
       (i32.eqz (local.get $width))
         (if (then unreachable))
 
@@ -377,10 +377,10 @@
 
     (call $merkleTree (local.get $tree) (local.get $width))
 
-    (undef i32)
+    i32.uzumaki
       (local.tee $idx)
       (i32.ge_u (local.get $width))
-      (if (then (filter unreachable)))
+      (if (then (assume unreachable)))
 
     (call $merkleChain
       (local.get $chain)
@@ -389,16 +389,16 @@
       (local.get $idx)
     )
 
-    (undef i32)
+    i32.uzumaki
       (local.tee $size)
       (i32.ge_u (global.get $maxDataSize))
-      (if (then (filter unreachable)))
+      (if (then (assume unreachable)))
 
     (call $memoryUndef (local.get $data) (local.get $size))
 
     (call $digest (i32.const 0) (local.get $data) (local.get $size))
 
-    (filter
+    (assume
       (call $memoryAlike
         (call $addrOf (local.get $tree) (local.get $idx))
         (i32.const 0)
@@ -445,21 +445,21 @@
 
     (local.set $hashSize2 (i32.shl (global.get $hashSize) (i32.const 1)))
 
-    (undef i32)
+    i32.uzumaki
       (local.tee $height)
       (i32.gt_u (global.get $maxHeight))
-      (if (then (filter unreachable)))
+      (if (then (assume unreachable)))
 
     (i32.mul (local.get $height) (global.get $hashSize))
       (local.set $chainsize)
 
-    (filter
-      (undef i32)
+    (assume
+      i32.uzumaki
         (local.tee $datasize1)
         (i32.gt_u (global.get $maxDataSize))
         (if (then unreachable))
 
-      (undef i32)
+      i32.uzumaki
         (local.tee $datasize2)
         (i32.gt_u (global.get $maxDataSize))
         (if (then unreachable))
@@ -491,7 +491,7 @@
     (call $memoryUndef (local.get $data2) (local.get $datasize2))
     (call $memoryUndef (local.get $chain2) (local.get $chainsize))
 
-    (filter $data_filter
+    (assume $data_filter
       (i32.ne (local.get $datasize1) (local.get $datasize2))
         (br_if $data_filter)
 
@@ -501,7 +501,7 @@
         (local.get $datasize1)
       )
 
-      (undef i32)
+      i32.uzumaki
         (local.tee $idx)
         (i32.ge_u (i32.shl (i32.const 1) (local.get $height)))
         (if (then unreachable))
@@ -525,7 +525,7 @@
       (local.get $height)
     )
 
-    (filter
+    (assume
       (call $memoryAlike
         (local.get $root1)
         (local.get $root2)
@@ -629,8 +629,8 @@
   )
 
   (func $verify
-    (total (call $integrity))
-    (total (call $soundness))
-    (total (call $uniqueness))
+    (forall (call $integrity))
+    (forall (call $soundness))
+    (forall (call $uniqueness))
   )
 )
