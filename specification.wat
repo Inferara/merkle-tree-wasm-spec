@@ -106,8 +106,8 @@
       (if (i32.eqz (local.get $size)) (then (return (i32.const 0))))
 
       (i32.ne
-        (i32.load8_u (i32.add (local.get $addr1) (local.get $off)))
-        (i32.load8_u (i32.add (local.get $addr2) (local.get $off)))
+        (i32.load8_u (local.get $addr1))
+        (i32.load8_u (local.get $addr2))
       ) (if (then (return (i32.const 1))))
 
       (local.set $addr1 (i32.add (local.get $addr1) (i32.const 1)))
@@ -123,7 +123,7 @@
   ;; Merkle trees. Returns two addresses of double-hash size blobs.
   (func $findTreeCollision
     (param $tree1 i32)
-    (param $tree1 i32)
+    (param $tree2 i32)
     (param $width i32)
     (result i32 i32 i32 i32)
 
@@ -233,8 +233,8 @@
     (param $addr2 i32)
     (param $size2 i32)
 
-    ;; (local $hashSize2 i32)
-    ;; (local.set $hashSize2 (i32.shl (global.get $hashSize) (i32.const 1)))
+    (local $hashSize2 i32)
+    (local.set $hashSize2 (i32.shl (global.get $hashSize) (i32.const 1)))
 
     (if (i32.eq (local.get $size1) (local.get $size2))
       (then
@@ -288,7 +288,6 @@
       (local.set $weight)
 
     (assume
-    (assume
       (i32.eqz (local.get $width))
         (if (then unreachable))
 
@@ -308,7 +307,6 @@
     (call $memoryUndef (local.get $tree2) (local.get $size))
 
     (assume
-    (assume
       (call $memoryDiffer
         (local.get $tree1)
         (local.get $tree2)
@@ -319,7 +317,6 @@
     (call $merkleTree (local.get $tree1) (local.get $width))
     (call $merkleTree (local.get $tree2) (local.get $width))
 
-    (assume
     (assume
       (call $memoryAlike
         (call $merkleRoot (local.get $tree1) (local.get $width))
@@ -355,7 +352,6 @@
     (local.set $width i32.uzumaki)
 
     (assume
-    (assume
       (i32.eqz (local.get $width))
         (if (then unreachable))
 
@@ -385,7 +381,6 @@
       (local.tee $idx)
       (i32.ge_u (local.get $width))
       (if (then (assume unreachable)))
-      (if (then (assume unreachable)))
 
     (call $merkleChain
       (local.get $chain)
@@ -398,13 +393,11 @@
       (local.tee $size)
       (i32.ge_u (global.get $maxDataSize))
       (if (then (assume unreachable)))
-      (if (then (assume unreachable)))
 
     (call $memoryUndef (local.get $data) (local.get $size))
 
     (call $digest (i32.const 0) (local.get $data) (local.get $size))
 
-    (assume
     (assume
       (call $memoryAlike
         (call $addrOf (local.get $tree) (local.get $idx))
@@ -456,7 +449,6 @@
       (local.tee $height)
       (i32.gt_u (global.get $maxHeight))
       (if (then (assume unreachable)))
-      (if (then (assume unreachable)))
 
     (i32.mul (local.get $height) (global.get $hashSize))
       (local.set $chainsize)
@@ -500,7 +492,6 @@
     (call $memoryUndef (local.get $chain2) (local.get $chainsize))
 
     (assume $data_filter
-    (assume $data_filter
       (i32.ne (local.get $datasize1) (local.get $datasize2))
         (br_if $data_filter)
 
@@ -534,7 +525,6 @@
       (local.get $height)
     )
 
-    (assume
     (assume
       (call $memoryAlike
         (local.get $root1)
