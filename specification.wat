@@ -632,8 +632,5 @@
     (forall (call $integrity))
     (forall (call $soundness))
     (forall (call $uniqueness))
-    (forall (call $integrity))
-    (forall (call $soundness))
-    (forall (call $uniqueness))
   )
 )
